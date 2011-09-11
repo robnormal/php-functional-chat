@@ -22,7 +22,6 @@ if (!empty($_POST)) {
 	if ($result->isLeft()) {
 		header('HTTP/1.0 500 Internal Server Error');
   }
-  print_r($result);
 
 }
 

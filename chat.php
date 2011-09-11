@@ -53,16 +53,14 @@ function PhpFunctionalChatModule($overrides = array())
 		return $_last;
 	};
 
-	$posts_to_string = function(array $old_posts, $new_post, $data_map) use ($last_id)
-	{
-		$_str = '';
-		$_last_id = null;
+  $set_post_id = function ($post, $id) {
+		$_post_with_id = clone $post;
+    $_post_with_id->id = $id;
 
-		$_post_with_id = clone $new_post;
-		$_post_with_id->id = $last_id($old_posts) + 1;
+    return $_post_with_id;
+  };
 
-		$posts = array_merge($old_posts, array($_post_with_id));
-
+	$posts_to_string = function(array $posts, $data_map) {
 		return json_encode($posts);
 	};
 
@@ -71,40 +69,28 @@ function PhpFunctionalChatModule($overrides = array())
 	 */
 	$retain_message = function ($message) {
 
-		// by default, ignore messages older than 5 seconds
-		return $message->time > $_SERVER['REQUEST_TIME'] - 5;
+		// by default, ignore messages older than 5 seconds (or ones without a time)
+    return !isset($message->time) || 
+      $message->time > $_SERVER['REQUEST_TIME'] - 5;
 	};
 
 	/**
 	 * @return [string]
 	 */
-	$messages_to_write = function (array $messages, $max_messages) use ($retain_message)
+  $messages_to_write = function (array $old_posts, $incoming, $max_posts)
+    use ($last_id, $set_post_id, $retain_message)
 	{
-		if (count($messages) > $max_messages) {
-			return array_filter($messages, $retain_message);
+    // set ID before filtering messages, so we can be sure it is up-to-date
+    $new_id       = $last_id($old_posts) + 1;
+    $post_with_id = $set_post_id($incoming, $new_id);
+
+		if (count($old_posts) >= $max_posts) {
+			$keeping = array_filter($old_posts, $retain_message);
 		} else {
-			return $messages;
+			$keeping = $old_posts;
 		}
-	};
 
-	/**
-	 * @return [string]
-	 */
-	$messages_to_write_ = function (array $messages, $max_messages) use ($retain_message)
-	{
-		if (count($messages) > $max_messages) {
-			$_outgoing = array();
-
-			foreach ($messages as $_message) {
-				if ($retain_message($_message)) {
-					$_outgoing []= $message;
-				}
-			}
-
-			return $_outgoing;
-		} else {
-			return $messages;
-		}
+    return array_merge($old_posts, array($post_with_id));
 	};
 
 
@@ -166,9 +152,9 @@ function PhpFunctionalChatModule($overrides = array())
 	/**
 	 * @return Either(void)
 	 */
-	$write_chat_file_IO = function ($old_messages, $new_post, $data_map, $file) use ($posts_to_string)
+	$write_chat_file_IO = function ($messages, $data_map, $file) use ($posts_to_string)
 	{
-		$text = $posts_to_string($old_messages, $new_post, $data_map);
+		$text = $posts_to_string($messages, $data_map);
 
 		if ($text) {
 			if (@ file_put_contents($file, $text)) {
@@ -184,7 +170,7 @@ function PhpFunctionalChatModule($overrides = array())
 	/**
 	 * @return Either(boolean)
 	 */
-	$add_message_IO = function ($message, $chat_file, $max_messages, $data_map)
+	$add_message_IO = function ($incoming, $chat_file, $max_messages, $data_map)
 		use ($messages_to_write, $read_chat_file_IO, $write_chat_file_IO)
 	{
 		$messages_e = $read_chat_file_IO($chat_file, $data_map);
@@ -193,10 +179,10 @@ function PhpFunctionalChatModule($overrides = array())
 			return $messages_e;
 
 		} else {
-			$old     = $messages_e->fromRight();
-			$keeping = $messages_to_write($old, $max_messages);
+			$old = $messages_e->fromRight();
+      $writing = $messages_to_write($old, $incoming, $max_messages);
 
-			return $write_chat_file_IO($keeping, $message, $data_map, $chat_file);
+			return $write_chat_file_IO($writing, $data_map, $chat_file);
 		}
 	};
 
