@@ -1,6 +1,6 @@
 <?php
 
-require('util.php');
+require_once(__DIR__.'/util.php');
 
 function PhpFunctionalChatModule($overrides = array())
 {
@@ -109,26 +109,29 @@ function PhpFunctionalChatModule($overrides = array())
 
 
 	/**
-	 * @return Maybe(resource)
+	 * @return Either(resource)
 	 */
 	$acquire_lock_IO = function ($lock_file)
 	{
 		if (! file_exists($lock_file)) {
 			touch($lock_file);
+		  if (! file_exists($lock_file)) {
+        return Either::left('could not create lock file');
+      }
 		}
 
 		$file = fopen($lock_file, 'c');
 
 		if ($file) {
 			if (flock($file, LOCK_EX)) {
-				return Maybe::just($file);
+				return Either::right($file);
 			} else {
 				fclose($file);
-				return Maybe::nothing();
+        return Either::left('could not acquire lock');
 			}
 
 		} else {
-			return Maybe::nothing();
+      return Either::left('could not open lock file');
 		}
 	};
 
@@ -210,13 +213,13 @@ function PhpFunctionalChatModule($overrides = array())
 		} else {
 			$lock_m = $acquire_lock_IO($lock_file);
 
-			if ($lock_m->isNothing()) {
+			if ($lock_m->isLeft()) {
 
-				return Either::left('could not acquire lock');
+				return $lock_m;
 
 			} else {
 				$result = $add_message_IO($post->fromRight(), $chat_file, $max_messages, $data_map);
-				$release_lock_IO($lock_m->fromJust());
+				$release_lock_IO($lock_m->fromRight());
 
 				return $result;
 			}

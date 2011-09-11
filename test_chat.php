@@ -1,7 +1,7 @@
 <?php
 
-include('chat.php');
-extract(getPhpChatMethods());
+require_once('chat.php');
+extract(PhpFunctionalChatModule());
 
 $params['room'] = 'myplace';
 $params['chatter'] = 'Joe';
@@ -15,8 +15,8 @@ $data_map = array(
 );
 
 $settings = array(
-	'CHAT_FILE' =>    '/home/rob/Sites/localhost/Chat/test_chat.json',
-	'LOCK_FILE' =>    '/home/rob/Sites/localhost/Chat/tmp/test_php_chat.lock',
+	'CHAT_FILE' =>    '/var/www/php-functional-chat/chat.json',
+	'LOCK_FILE' =>    '/var/www/php-functional-chat/tmp/php_chat.lock',
 	'MAX_MESSAGES' => 10,
 	'MSG_DATA' =>     $data_map
 );

@@ -2,8 +2,8 @@
 <html>
 	<head>
 		<title>test</title>
-		<script src="/Chat/jquery-1.6.3.min.js"></script>
-		<script src="/Chat/chat.js"></script>
+		<script src="/php-functional-chat/jquery-1.6.3.min.js"></script>
+		<script src="/php-functional-chat/chat.js"></script>
 		<style>
 			textarea {
 
@@ -12,6 +12,7 @@
 	</head>
 	<body>
 
+    <a href="/php-functional-chat/chat.json.php">blah</a>
 		<div id="chat_div">
 		</div>
 
@@ -23,8 +24,8 @@
 		<script>
 			(function ($) {
 				var chat = newChat({
-					post_url: '/Chat/receive.php',
-					get_url:  '/Chat/chat.json',
+					post_url: '/php-functional-chat/receive.php',
+					get_url:  '/php-functional-chat/chat.json.php',
 					identity: 'joe'
 				});
 

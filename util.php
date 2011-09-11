@@ -3,8 +3,8 @@
 function PhpFunctionalChatUtilityModule()
 {
   $disable_browser_cache_IO = function () {
-    header('Cache-Control: no-cache');
-    header('Pragma: no-cache');
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
   };
 
   // encapsulates common "if (isset())" pattern
