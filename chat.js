@@ -75,7 +75,7 @@ var newChat = function (options) {
 			last_id = 0,
 
 			checkMessage = function (msg) {
-				return msg.id > last_id;
+				return msg && msg.id > last_id;
 			},
 
 			processMessage = function (msg) {
@@ -92,17 +92,24 @@ var newChat = function (options) {
 		;
 
     fetchMessages = function () {
-      var msg_data, msgs, len;
+      var msg_data, msgs, len, i;
 
       $.getJSON(get_url, null, function (msgs) {
 
         if (msgs) {
 					len = msgs.length;
-					for (var i = 0; i < len; i++) {
+					for (i = 0; i < len; i++) {
 						processMessage(msgs[i]);
 					}
 
-					last_id = Math.max.apply(null, $.pluck(msgs, 'id'));
+          last_id = 0;
+          for (i = 0; i < len; i++) {
+            if (msgs[i] && msgs[i].id && msgs[i].id > last_id) {
+					    last_id = msgs[i].id ;
+            }
+          }
+
+          return last_id;
         }
       });
 

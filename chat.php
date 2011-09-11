@@ -85,21 +85,23 @@ function PhpFunctionalChatModule($options = array())
 		if (count($posts) >= $max_posts) {
 			$keeping = array_filter($posts, $retainMessage);
 		} else {
-			$keeping = $old_posts;
+			$keeping = $posts;
 		}
+
+    return $keeping;
   };
 
 	/**
 	 * @return [Post]
 	 */
-  $messagesToWrite = function (array $old_posts, $incoming, $max_posts)
+  $postsToWrite = function (array $old_posts, $incoming, $max_posts)
     use ($giveNewPostId, $postsToKeep)
 	{
     // get ID before filtering messages, so we can be sure it is up-to-date
     $post = $giveNewPostId($incoming, $old_posts);
     $keeping = $postsToKeep($old_posts, $max_posts);
 
-    return array_merge($old_posts, array($post));
+    return array_merge($keeping, array($post));
 	};
 
 
@@ -180,7 +182,7 @@ function PhpFunctionalChatModule($options = array())
 	 * @return Either(boolean)
 	 */
 	$addMessageIO = function ($incoming, $chat_file, $max_messages, $data_map)
-		use ($messagesToWrite, $readChatFileIO, $writeChatFileIO)
+		use ($postsToWrite, $readChatFileIO, $writeChatFileIO)
 	{
 		$messages_e = $readChatFileIO($chat_file, $data_map);
 		if ($messages_e->isLeft()) {
@@ -189,7 +191,7 @@ function PhpFunctionalChatModule($options = array())
 
 		} else {
 			$old = $messages_e->fromRight();
-      $writing = $messagesToWrite($old, $incoming, $max_messages);
+      $writing = $postsToWrite($old, $incoming, $max_messages);
 
 			return $writeChatFileIO($writing, $data_map, $chat_file);
 		}
@@ -269,7 +271,7 @@ function PhpFunctionalChatModule($options = array())
       'postsToString',
       'retainMessage',
       'postsToKeep',
-      'messagesToWrite',
+      'postsToWrite',
       'acquireLockIO',
       'releaseLockIO',
       'readChatFileIO',

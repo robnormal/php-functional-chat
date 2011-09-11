@@ -37,7 +37,7 @@ class Maybe
   function fromJust()
   {
     if ($this->isNothing()) {
-      trigger_error("fromJust called on Maybe::nothing.", E_ERROR);
+      trigger_error("fromJust called on Maybe::nothing.", E_USER_ERROR);
     } else {
       return $this->thing;
     }
@@ -64,7 +64,7 @@ class Maybe
 
 	function __get($var)
 	{
-    trigger_error('Maybe has no properties', E_ERROR);
+    trigger_error('Maybe has no properties', E_USER_ERROR);
 	}
 }
 
@@ -110,7 +110,7 @@ class Either
 	function fromLeft()
 	{
 		if ($this->isRight()) {
-      trigger_error("fromLeft called on Either::right.", E_ERROR);
+      trigger_error("fromLeft called on Either::right.", E_USER_ERROR);
 		} else {
 			return $this->data;
 		}
@@ -119,7 +119,7 @@ class Either
 	function fromRight()
 	{
 		if ($this->isLeft()) {
-      trigger_error("fromRight called on Either::right.", E_ERROR);
+      trigger_error("fromRight called on Either::right.", E_USER_ERROR);
 		} else {
 			return $this->data;
 		}
@@ -127,7 +127,7 @@ class Either
 
 	function __get($var)
 	{
-    trigger_error('Either has no properties', E_ERROR);
+    trigger_error('Either has no properties', E_USER_ERROR);
 	}
 }
 
