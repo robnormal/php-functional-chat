@@ -2,12 +2,14 @@
 
 require_once(__DIR__.'/util.php');
 
-function PhpFunctionalChatModule($overrides = array())
+function PhpFunctionalChatModule($options = array())
 {
+  extract(PhpFunctionalChatUtilityModule());
+
 	/**
 	 * @return Either([String]) Validated and possibly modified request data
 	 */
-	$validate_request = function ($params) {
+	$validateRequest = function ($params) {
 		// by default, do nothing
 		return Either::right($params);
 	};
@@ -15,9 +17,9 @@ function PhpFunctionalChatModule($overrides = array())
 	/**
 	 * @return Either(Post)
 	 */
-	$post_from_request = function ($data, $data_map, $time) use ($validate_request)
+	$postFromRequest = function ($data, $data_map, $time) use ($validateRequest)
 	{
-		$valid_e = $validate_request($data);
+		$valid_e = $validateRequest($data);
 
 		if ($valid_e->isLeft()) {
 			return $valid_e;
@@ -36,11 +38,11 @@ function PhpFunctionalChatModule($overrides = array())
 		}
 	};
 
-	$old_posts_from_string = function ($string, $data_map) {
+	$oldPostsFromString = function ($string, $data_map) {
 		return json_decode($string);
 	};
 
-	$last_id = function (array $old_posts) {
+	$lastId = function (array $old_posts) {
 		$_last = 0;
 
 		foreach ($old_posts as $_post) {
@@ -53,51 +55,58 @@ function PhpFunctionalChatModule($overrides = array())
 		return $_last;
 	};
 
-  $set_post_id = function ($post, $id) {
-		$_post_with_id = clone $post;
-    $_post_with_id->id = $id;
+  $giveNewPostId = function ($post, $old_posts) use ($lastId) {
+    $new_id            = $lastId($old_posts) + 1;
+    $_post_with_id     = clone $post;
+    $_post_with_id->id = $new_id;
 
     return $_post_with_id;
   };
 
-	$posts_to_string = function(array $posts, $data_map) {
+	$postsToString = function(array $posts, $data_map) {
 		return json_encode($posts);
 	};
 
 	/**
 	 * @return boolean
 	 */
-	$retain_message = function ($message) {
+	$retainMessage = function ($message) {
 
 		// by default, ignore messages older than 5 seconds (or ones without a time)
     return !isset($message->time) || 
       $message->time > $_SERVER['REQUEST_TIME'] - 5;
 	};
 
-	/**
-	 * @return [string]
-	 */
-  $messages_to_write = function (array $old_posts, $incoming, $max_posts)
-    use ($last_id, $set_post_id, $retain_message)
-	{
-    // set ID before filtering messages, so we can be sure it is up-to-date
-    $new_id       = $last_id($old_posts) + 1;
-    $post_with_id = $set_post_id($incoming, $new_id);
 
-		if (count($old_posts) >= $max_posts) {
-			$keeping = array_filter($old_posts, $retain_message);
+	/**
+	 * @return [Post]
+	 */
+  $postsToKeep = function (array $posts, $max_posts) use ($retainMessage) {
+		if (count($posts) >= $max_posts) {
+			$keeping = array_filter($posts, $retainMessage);
 		} else {
 			$keeping = $old_posts;
 		}
+  };
 
-    return array_merge($old_posts, array($post_with_id));
+	/**
+	 * @return [Post]
+	 */
+  $messagesToWrite = function (array $old_posts, $incoming, $max_posts)
+    use ($giveNewPostId, $postsToKeep)
+	{
+    // get ID before filtering messages, so we can be sure it is up-to-date
+    $post = $giveNewPostId($incoming, $old_posts);
+    $keeping = $postsToKeep($old_posts, $max_posts);
+
+    return array_merge($old_posts, array($post));
 	};
 
 
 	/**
 	 * @return Either(resource)
 	 */
-	$acquire_lock_IO = function ($lock_file)
+	$acquireLockIO = function ($lock_file)
 	{
 		if (! file_exists($lock_file)) {
 			touch($lock_file);
@@ -124,7 +133,7 @@ function PhpFunctionalChatModule($overrides = array())
 	/**
 	 * @return void
 	 */
-	$release_lock_IO = function ($lock_file)
+	$releaseLockIO = function ($lock_file)
 	{
 		flock($lock_file, LOCK_UN);
 		fclose($lock_file);
@@ -133,10 +142,10 @@ function PhpFunctionalChatModule($overrides = array())
 	/**
 	 * @return Either(array) current messages
 	 */
-	$read_chat_file_IO = function ($file, $data_map) use ($old_posts_from_string)
+	$readChatFileIO = function ($file, $data_map) use ($oldPostsFromString)
 	{
 		if ( ($json = file_get_contents($file)) !== false ) {
-			$messages = $old_posts_from_string($json, $data_map);
+			$messages = $oldPostsFromString($json, $data_map);
 
 			if (empty($messages)) {
 				return Either::right(array());
@@ -152,9 +161,9 @@ function PhpFunctionalChatModule($overrides = array())
 	/**
 	 * @return Either(void)
 	 */
-	$write_chat_file_IO = function ($messages, $data_map, $file) use ($posts_to_string)
+	$writeChatFileIO = function ($messages, $data_map, $file) use ($postsToString)
 	{
-		$text = $posts_to_string($messages, $data_map);
+		$text = $postsToString($messages, $data_map);
 
 		if ($text) {
 			if (@ file_put_contents($file, $text)) {
@@ -170,49 +179,49 @@ function PhpFunctionalChatModule($overrides = array())
 	/**
 	 * @return Either(boolean)
 	 */
-	$add_message_IO = function ($incoming, $chat_file, $max_messages, $data_map)
-		use ($messages_to_write, $read_chat_file_IO, $write_chat_file_IO)
+	$addMessageIO = function ($incoming, $chat_file, $max_messages, $data_map)
+		use ($messagesToWrite, $readChatFileIO, $writeChatFileIO)
 	{
-		$messages_e = $read_chat_file_IO($chat_file, $data_map);
+		$messages_e = $readChatFileIO($chat_file, $data_map);
 		if ($messages_e->isLeft()) {
 
 			return $messages_e;
 
 		} else {
 			$old = $messages_e->fromRight();
-      $writing = $messages_to_write($old, $incoming, $max_messages);
+      $writing = $messagesToWrite($old, $incoming, $max_messages);
 
-			return $write_chat_file_IO($writing, $data_map, $chat_file);
+			return $writeChatFileIO($writing, $data_map, $chat_file);
 		}
 	};
 
 	/**
 	 * @return Either(boolean)
 	 */
-	$receive_post_IO = function ($params, $data_map, $chat_file, $lock_file, $max_messages)
-		use ($acquire_lock_IO, $release_lock_IO, $add_message_IO, $post_from_request)
+	$receivePostIO = function ($params, $data_map, $chat_file, $lock_file, $max_messages)
+		use ($acquireLockIO, $releaseLockIO, $addMessageIO, $postFromRequest)
 	{
-		$post = $post_from_request($params, $data_map, $_SERVER['REQUEST_TIME']);
+		$post = $postFromRequest($params, $data_map, $_SERVER['REQUEST_TIME']);
 
 		if ($post->isLeft()) {
 			return $post;
 		} else {
-			$lock_m = $acquire_lock_IO($lock_file);
+			$lock_m = $acquireLockIO($lock_file);
 
 			if ($lock_m->isLeft()) {
 
 				return $lock_m;
 
 			} else {
-				$result = $add_message_IO($post->fromRight(), $chat_file, $max_messages, $data_map);
-				$release_lock_IO($lock_m->fromRight());
+				$result = $addMessageIO($post->fromRight(), $chat_file, $max_messages, $data_map);
+				$releaseLockIO($lock_m->fromRight());
 
 				return $result;
 			}
 		}
 	};
 
-	$check_secttings = function ($settings) {
+	$checkSecttings = function ($settings) {
 		$necessary = array(
 			'CHAT_FILE',
 			'LOCK_FILE',
@@ -228,9 +237,9 @@ function PhpFunctionalChatModule($overrides = array())
 
 
 
-	$main = function ($params, $settings) use ($check_secttings, $receive_post_IO)
+	$main = function ($params, $settings) use ($checkSecttings, $receivePostIO)
 	{
-		assert('$check_secttings($settings)');
+		assert('$checkSecttings($settings)');
 
 		$msg_data = $settings['MSG_DATA'];
 
@@ -244,16 +253,37 @@ function PhpFunctionalChatModule($overrides = array())
 			$l_file = $settings['LOCK_FILE'];
 			$max    = $settings['MAX_MESSAGES'];
 
-			return $receive_post_IO($params, $msg_data, $c_file, $l_file, $max);
+			return $receivePostIO($params, $msg_data, $c_file, $l_file, $max);
 		} else {
 			return Either::left('invalid request');
 		}
 	};
 
-	return compact(
-		'main',
-		'validate_request',
-		'post_from_request'
-	);
+  if ($val($options['test'])) {
+    $exports = array(
+      'validateRequest',
+      'postFromRequest',
+      'oldPostsFromString',
+      'lastId',
+      'giveNewPostId',
+      'postsToString',
+      'retainMessage',
+      'postsToKeep',
+      'messagesToWrite',
+      'acquireLockIO',
+      'releaseLockIO',
+      'readChatFileIO',
+      'writeChatFileIO',
+      'addMessageIO',
+      'receivePostIO',
+      'checkSecttings',
+      'main',
+    );
+
+  } else {
+    $exports = array('main');
+  }
+
+	return compact($exports);
 }
 

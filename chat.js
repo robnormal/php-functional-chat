@@ -184,8 +184,8 @@ var newChat = function (options) {
 
   formatMessage = options.formatMessage || function (msg) {
     return ['<div>',
-            '<span>', msg.user, '</span>',
-            '<span>', msg.message, '</span>',
+            '<div class="chat_userame">', msg.user, '</div>',
+            '<div class="chat_msg">', msg.message, '</div>',
             '</div>'
            ].join('');
   };

@@ -2,41 +2,56 @@
 <html>
 	<head>
 		<title>test</title>
-		<script src="/php-functional-chat/jquery-1.6.3.min.js"></script>
+		<script src="/php-functional-chat/js/jquery-1.6.3.min.js"></script>
+		<script src="/php-functional-chat/js/jquery-tmpl/jquery.tmpl.js"></script>
 		<script src="/php-functional-chat/chat.js"></script>
+		<script src="/php-functional-chat/example.js"></script>
 		<style>
 			textarea {
-
+        border: 4px solid #000;
 			}
+
+      #chat_div {
+      }
+
+      #chat_div > div {
+        overflow: auto;
+        width: 100%
+      }
+      div.chatTime {
+        float: left;
+      }
+      div.chatUser {
+        float: left;
+        margin-left: 1em;
+      }
+
+      div.chatUser:after {
+	      content: ":";
+      }
+      div.chatMsg {
+        float: left;
+        margin-left: 1em;
+      }
 		</style>
 	</head>
 	<body>
 
-    <a href="/php-functional-chat/chat.json.php">blah</a>
 		<div id="chat_div">
 		</div>
 
 		<form action="#" method="post">
-			<textarea id="chat_input" name="chat_input" rows=3 cols="80" style="border: 4px solid #000;"></textarea>
+			<textarea id="chat_input" name="chat_input" rows=3 cols="80"></textarea>
 			<button type="submit" id="post_message" name="post_message">Send</button>
 		</form>
 
-		<script>
-			(function ($) {
-				var chat = newChat({
-					post_url: '/php-functional-chat/receive.php',
-					get_url:  '/php-functional-chat/chat.json.php',
-					identity: 'joe'
-				});
-
-				chat.start();
-
-				$('#post_message').click(function () {
-					chat.post;
-					return false;
-				});
-			})(jQuery);
-		</script>
+    <script id="msgTemplate" type="text/x-jquery-tmpl">
+      <div>
+        <div class="chatTime">${$item.timeStr}</div>
+        <div class="chatUser">${user}</div>
+        <div class="chatMsg">${message}</div>
+      </div>
+    </script>
 
 	</body>
 </html>

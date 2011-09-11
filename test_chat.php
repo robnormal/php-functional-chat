@@ -1,7 +1,7 @@
 <?php
 
 require_once('chat.php');
-extract(PhpFunctionalChatModule());
+extract(PhpFunctionalChatModule(array('test' => true)));
 
 $params['room'] = 'myplace';
 $params['chatter'] = 'Joe';
@@ -21,19 +21,19 @@ $settings = array(
 	'MSG_DATA' =>     $data_map
 );
 
-if ($validate_request($params) instanceof Either) {
-	echo "validate_request() returns Either\n";
+if ($validateRequest($params) instanceof Either) {
+	echo "validateRequest() returns Either\n";
 } else {
-	echo "ERROR: validate_request() returns Either\n";
+	echo "ERROR: validateRequest() returns Either\n";
 }
 
-$post = $post_from_request($params, $data_map, time());
+$post = $postFromRequest($params, $data_map, time());
 if (! ($post instanceof Either)) {
-	echo "ERROR: post_from_request() returns Either\n";
+	echo "ERROR: postFromRequest() returns Either\n";
 } else if ($post->isLeft()) {
-	echo "ERROR: post_from_request() returns Right on valid data\n";
+	echo "ERROR: postFromRequest() returns Right on valid data\n";
 } else {
-	echo "post_from_request() returns Right on valid data\n";
+	echo "postFromRequest() returns Right on valid data\n";
 }
 
 
@@ -41,12 +41,12 @@ $result = $main($params, $settings);
 
 if ($result instanceof Either) {
 	if ($result->isRight()) {
-		echo "validate_request() returns Right on valid data\n";
+		echo "main() returns Right on valid data\n";
 	} else {
-		echo "ERROR: validate_request() returns Either\n";
+		echo "ERROR: main() returns Either\n";
 	}
 } else {
-	echo "ERROR: validate_request() returns Either\n";
+	echo "ERROR: main() returns Either\n";
 }
 
 
