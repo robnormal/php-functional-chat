@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>test</title>
+		<script src="/Chat/jquery-1.6.3.min.js"></script>
+		<script src="/Chat/chat.js"></script>
+		<style>
+			textarea {
+
+			}
+		</style>
+	</head>
+	<body>
+
+		<div id="chat_div">
+		</div>
+
+		<form action="#" method="post">
+			<textarea id="chat_input" name="chat_input" rows=3 cols="80" style="border: 4px solid #000;"></textarea>
+			<button type="submit" id="post_message" name="post_message">Send</button>
+		</form>
+
+		<script>
+			(function ($) {
+				var chat = newChat({
+					post_url: '/Chat/receive.php',
+					get_url:  '/Chat/chat.json',
+					identity: 'joe'
+				});
+
+				chat.start();
+
+				$('#post_message').click(function () {
+					chat.post;
+					return false;
+				});
+			})(jQuery);
+		</script>
+
+	</body>
+</html>
+
