@@ -2,14 +2,14 @@
 
 class RR_PHPUnit_TestCase extends PHPUnit_Framework_TestCase
 {
-	function hasAttribute ($attr, $class_or_obj, $msg = null)
-	{
-		if (is_object($class_or_obj)) {
-			return $this->assertObjectHasAttribute($attr, $class_or_obj, $msg);
-		} else {
-			return $this->assertClassHasAttribute($attr, $class_or_obj, $msg);
-		}
-	}
+  function hasAttribute ($attr, $class_or_obj, $msg = null)
+  {
+    if (is_object($class_or_obj)) {
+      return $this->assertObjectHasAttribute($attr, $class_or_obj, $msg);
+    } else {
+      return $this->assertClassHasAttribute($attr, $class_or_obj, $msg);
+    }
+  }
 
 
   private static $aliased_methods = array();
@@ -17,9 +17,9 @@ class RR_PHPUnit_TestCase extends PHPUnit_Framework_TestCase
 
   static function aliasMethod($method, $alias)
   {
-		if (method_exists(get_class(), $alias)) {
-			trigger_error(get_class() . " already has a method called \"$alias\"", E_USER_ERROR);
-		}
+    if (method_exists(get_class(), $alias)) {
+      trigger_error(get_class() . " already has a method called \"$alias\"", E_USER_ERROR);
+    }
 
     if (empty(self::$aliased_methods[$alias])) {
       self::$alias_call_parent__call = method_exists(get_parent_class(), '__call');

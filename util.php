@@ -62,72 +62,72 @@ class Maybe
     return new Maybe($thing);
   }
 
-	function __get($var)
-	{
+  function __get($var)
+  {
     trigger_error('Maybe has no properties', E_USER_ERROR);
-	}
+  }
 }
 
 class Either
 {
-	private $left;
-	private $right;
+  private $left;
+  private $right;
 
-	private $data;
+  private $data;
 
-	private function __construct() { }
+  private function __construct() { }
 
   static function left($data)
   {
-		$e        = new Either;
-		$e->left  = true;
-		$e->right = false;
-		$e->data  = $data;
+    $e        = new Either;
+    $e->left  = true;
+    $e->right = false;
+    $e->data  = $data;
 
-		return $e;
+    return $e;
   }
 
   static function right($data)
   {
-		$e        = new Either;
-		$e->left  = false;
-		$e->right = true;
-		$e->data  = $data;
+    $e        = new Either;
+    $e->left  = false;
+    $e->right = true;
+    $e->data  = $data;
 
-		return $e;
+    return $e;
   }
 
-	function isLeft()
-	{
-		return $this->left;
-	}
+  function isLeft()
+  {
+    return $this->left;
+  }
 
-	function isRight()
-	{
-		return $this->right;
-	}
+  function isRight()
+  {
+    return $this->right;
+  }
 
-	function fromLeft()
-	{
-		if ($this->isRight()) {
+  function fromLeft()
+  {
+    if ($this->isRight()) {
       trigger_error("fromLeft called on Either::right.", E_USER_ERROR);
-		} else {
-			return $this->data;
-		}
-	}
+    } else {
+      return $this->data;
+    }
+  }
 
-	function fromRight()
-	{
-		if ($this->isLeft()) {
+  function fromRight()
+  {
+    if ($this->isLeft()) {
       trigger_error("fromRight called on Either::right.", E_USER_ERROR);
-		} else {
-			return $this->data;
-		}
-	}
+    } else {
+      return $this->data;
+    }
+  }
 
-	function __get($var)
-	{
+  function __get($var)
+  {
     trigger_error('Either has no properties', E_USER_ERROR);
-	}
+  }
 }
 
