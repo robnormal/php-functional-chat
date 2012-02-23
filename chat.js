@@ -139,7 +139,7 @@ var newChat = function (options) {
   // helper function
   var holdingShift = function (e) {
     // standard || IE
-    return e.shiftKey || (e.modifiers & Event.SHIFT_MASK);
+    return e.shiftKey || (e.modifiers & window.Event.SHIFT_MASK);
   };
 
   inputHandler = options.inputHandler || function () {

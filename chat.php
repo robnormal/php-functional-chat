@@ -2,290 +2,259 @@
 
 require_once(__DIR__.'/util.php');
 
-function PhpFunctionalChatModule($options = array())
+class PhpFunctionalChat
 {
-  extract(PhpFunctionalChatUtilityModule());
+	/**
+	 * @return Either([String]) Validated and possibly modified request data
+	 */
+	static function validateRequest($params) {
+		// by default, do nothing
+		return Either::right($params);
+	}
 
-  /**
-   * @return Either([String]) Validated and possibly modified request data
-   */
-  $validateRequest = function ($params) {
-    // by default, do nothing
-    return Either::right($params);
-  };
+	/**
+	 * @return Either(Post)
+	 */
+	static function postFromRequest($data, $data_map, $time)
+	{
+		$valid_e = static::validateRequest($data);
 
-  /**
-   * @return Either(Post)
-   */
-  $postFromRequest = function ($data, $data_map, $time) use ($validateRequest)
-  {
-    $valid_e = $validateRequest($data);
+		if ($valid_e->isLeft()) {
+			return $valid_e;
+		} else {
+			$valid = $valid_e->fromRight();
 
-    if ($valid_e->isLeft()) {
-      return $valid_e;
-    } else {
-      $valid = $valid_e->fromRight();
+			$_post = new stdClass();
 
-      $_post = new stdClass();
+			foreach ($data_map as $_member => $_post_var) {
+				$_post->$_member = $valid[$_post_var];
+			}
 
-      foreach ($data_map as $_member => $_post_var) {
-        $_post->$_member = $valid[$_post_var];
-      }
+			$_post->time = $time;
 
-      $_post->time = $time;
+			return Either::right($_post);
+		}
+	}
 
-      return Either::right($_post);
-    }
-  };
+	static function oldPostsFromString($string, $data_map) {
+		return json_decode($string);
+	}
 
-  $oldPostsFromString = function ($string, $data_map) {
-    return json_decode($string);
-  };
+	static function lastId(array $old_posts) {
+		$_last = 0;
 
-  $lastId = function (array $old_posts) {
-    $_last = 0;
+		foreach ($old_posts as $_post) {
+			// skip post if no id is defined
+			if (isset($_post->id) && $_post->id > $_last) {
+				$_last = $_post->id;
+			}
+		}
 
-    foreach ($old_posts as $_post) {
-      // skip post if no id is defined
-      if (isset($_post->id) && $_post->id > $_last) {
-        $_last = $_post->id;
-      }
-    }
+		return $_last;
+	}
 
-    return $_last;
-  };
+	static function giveNewPostId($post, $old_posts)
+	{
+		$new_id            = static::lastId($old_posts) + 1;
+		$_post_with_id     = clone $post;
+		$_post_with_id->id = $new_id;
 
-  $giveNewPostId = function ($post, $old_posts) use ($lastId) {
-    $new_id            = $lastId($old_posts) + 1;
-    $_post_with_id     = clone $post;
-    $_post_with_id->id = $new_id;
+		return $_post_with_id;
+	}
 
-    return $_post_with_id;
-  };
+	static function postsToString(array $posts, $data_map) {
+		return json_encode($posts);
+	}
 
-  $postsToString = function(array $posts, $data_map) {
-    return json_encode($posts);
-  };
+	/**
+	 * @return boolean
+	 */
+	static function retainMessage($message) {
 
-  /**
-   * @return boolean
-   */
-  $retainMessage = function ($message) {
-
-    // by default, ignore messages older than 5 seconds (or ones without a time)
-    return !isset($message->time) ||
-      $message->time > $_SERVER['REQUEST_TIME'] - 5;
-  };
-
-
-  /**
-   * @return [Post]
-   */
-  $postsToKeep = function (array $posts, $max_posts) use ($retainMessage) {
-    if (count($posts) >= $max_posts) {
-      $keeping = array_filter($posts, $retainMessage);
-    } else {
-      $keeping = $posts;
-    }
-
-    return $keeping;
-  };
-
-  /**
-   * @return [Post]
-   */
-  $postsToWrite = function (array $old_posts, $incoming, $max_posts)
-    use ($giveNewPostId, $postsToKeep)
-  {
-    // get ID before filtering messages, so we can be sure it is up-to-date
-    $post = $giveNewPostId($incoming, $old_posts);
-    $keeping = $postsToKeep($old_posts, $max_posts);
-
-    return array_merge($keeping, array($post));
-  };
+		// by default, ignore messages older than 5 seconds (or ones without a time)
+		return !isset($message->time) ||
+			$message->time > $_SERVER['REQUEST_TIME'] - 5;
+	}
 
 
-  /**
-   * @return Either(resource)
-   */
-  $acquireLockIO = function ($lock_file)
-  {
-    if (! file_exists($lock_file)) {
-      touch($lock_file);
-      if (! file_exists($lock_file)) {
-        return Either::left('could not create lock file');
-      }
-    }
+	/**
+	 * @return [Post]
+	 */
+	static function postsToKeep(array $posts, $max_posts)
+	{
+		if (count($posts) >= $max_posts) {
+			return array_filter($posts, array(get_called_class(), 'retainMessage'));
+		} else {
+			return $posts;
+		}
+	}
 
-    $file = fopen($lock_file, 'c');
+	/**
+	 * @return [Post]
+	 */
+	static function postsToWrite(array $old_posts, $incoming, $max_posts)
+	{
+		// get ID before filtering messages, so we can be sure it is up-to-date
+		$post = static::giveNewPostId($incoming, $old_posts);
+		$keeping = static::postsToKeep($old_posts, $max_posts);
 
-    if ($file) {
-      if (flock($file, LOCK_EX)) {
-        return Either::right($file);
-      } else {
-        fclose($file);
-        return Either::left('could not acquire lock');
-      }
+		return array_merge($keeping, array($post));
+	}
 
-    } else {
-      return Either::left('could not open lock file');
-    }
-  };
 
-  /**
-   * @return void
-   */
-  $releaseLockIO = function ($lock_file)
-  {
-    flock($lock_file, LOCK_UN);
-    fclose($lock_file);
-  };
+	/**
+	 * @return Either(resource)
+	 */
+	static function acquireLockIO($lock_file)
+	{
+		if (! file_exists($lock_file)) {
+			touch($lock_file);
+			if (! file_exists($lock_file)) {
+				return Either::left('could not create lock file');
+			}
+		}
 
-  /**
-   * @return Either(array) current messages
-   */
-  $readChatFileIO = function ($file, $data_map) use ($oldPostsFromString)
-  {
-    if ( ($json = file_get_contents($file)) !== false ) {
-      $messages = $oldPostsFromString($json, $data_map);
+		$file = fopen($lock_file, 'c');
 
-      if (empty($messages)) {
-        return Either::right(array());
-      } else {
-        return Either::right($messages);
-      }
+		if ($file) {
+			if (flock($file, LOCK_EX)) {
+				return Either::right($file);
+			} else {
+				fclose($file);
+				return Either::left('could not acquire lock');
+			}
 
-    } else {
-      return Either::left('could not read chat file');
-    }
-  };
+		} else {
+			return Either::left('could not open lock file');
+		}
+	}
 
-  /**
-   * @return Either(void)
-   */
-  $writeChatFileIO = function ($messages, $data_map, $file) use ($postsToString)
-  {
-    $text = $postsToString($messages, $data_map);
+	/**
+	 * @return void
+	 */
+	static function releaseLockIO($lock_file)
+	{
+		flock($lock_file, LOCK_UN);
+		fclose($lock_file);
+	}
 
-    if ($text) {
-      if (@ file_put_contents($file, $text)) {
-        return Either::right(null);
-      } else {
-        return Either::left('could not write to chat file');
-      }
-    } else {
-      return Either::left('could not json_encode messages');
-    }
-  };
+	/**
+	 * @return Either(array) current messages
+	 */
+	static function readChatFileIO($file, $data_map)
+	{
+		if ( ($json = file_get_contents($file)) !== false ) {
+			$messages = static::oldPostsFromString($json, $data_map);
 
-  /**
-   * @return Either(boolean)
-   */
-  $addMessageIO = function ($incoming, $chat_file, $max_messages, $data_map)
-    use ($postsToWrite, $readChatFileIO, $writeChatFileIO)
-  {
-    $messages_e = $readChatFileIO($chat_file, $data_map);
-    if ($messages_e->isLeft()) {
+			if (empty($messages)) {
+				return Either::right(array());
+			} else {
+				return Either::right($messages);
+			}
 
-      return $messages_e;
+		} else {
+			return Either::left('could not read chat file');
+		}
+	}
 
-    } else {
-      $old = $messages_e->fromRight();
-      $writing = $postsToWrite($old, $incoming, $max_messages);
+	/**
+	 * @return Either(void)
+	 */
+	static function writeChatFileIO($messages, $data_map, $file)
+	{
+		$text = static::postsToString($messages, $data_map);
 
-      return $writeChatFileIO($writing, $data_map, $chat_file);
-    }
-  };
+		if ($text) {
+			if (@ file_put_contents($file, $text)) {
+				return Either::right(null);
+			} else {
+				return Either::left("could not write to chat file: $file");
+			}
+		} else {
+			return Either::left('could not json_encode messages');
+		}
+	}
 
-  /**
-   * @return Either(boolean)
-   */
-  $receivePostIO = function ($params, $data_map, $chat_file, $lock_file, $max_messages)
-    use ($acquireLockIO, $releaseLockIO, $addMessageIO, $postFromRequest)
-  {
-    $post = $postFromRequest($params, $data_map, $_SERVER['REQUEST_TIME']);
+	/**
+	 * @return Either(boolean)
+	 */
+	static function addMessageIO($incoming, $chat_file, $max_messages, $data_map)
+	{
+		$messages_e = static::readChatFileIO($chat_file, $data_map);
+		if ($messages_e->isLeft()) {
 
-    if ($post->isLeft()) {
-      return $post;
-    } else {
-      $lock_m = $acquireLockIO($lock_file);
+			return $messages_e;
 
-      if ($lock_m->isLeft()) {
+		} else {
+			$old = $messages_e->fromRight();
+			$writing = static::postsToWrite($old, $incoming, $max_messages);
 
-        return $lock_m;
+			return static::writeChatFileIO($writing, $data_map, $chat_file);
+		}
+	}
 
-      } else {
-        $result = $addMessageIO($post->fromRight(), $chat_file, $max_messages, $data_map);
-        $releaseLockIO($lock_m->fromRight());
+	/**
+	 * @return Either(boolean)
+	 */
+	static function receivePostIO($params, $data_map, $chat_file, $lock_file, $max_messages)
+	{
+		$post = static::postFromRequest($params, $data_map, $_SERVER['REQUEST_TIME']);
 
-        return $result;
-      }
-    }
-  };
+		if ($post->isLeft()) {
+			return $post;
+		} else {
+			$lock_m = static::acquireLockIO($lock_file);
 
-  $checkSecttings = function ($settings) {
-    $necessary = array(
-      'CHAT_FILE',
-      'LOCK_FILE',
-      'MAX_MESSAGES',
-      'MSG_DATA'
-    );
+			if ($lock_m->isLeft()) {
 
-    // make sure $settings have all necessary keys
-    return count( array_intersect(array_keys($settings), $necessary) ) ==
-      count($necessary);
-  };
+				return $lock_m;
+
+			} else {
+				$result = static::addMessageIO($post->fromRight(), $chat_file, $max_messages, $data_map);
+				static::releaseLockIO($lock_m->fromRight());
+
+				return $result;
+			}
+		}
+	}
+
+	static function checkSecttings($settings) {
+		$necessary = array(
+			'CHAT_FILE',
+			'LOCK_FILE',
+			'MAX_MESSAGES',
+			'MSG_DATA'
+		);
+
+		// make sure $settings have all necessary keys
+		return count( array_intersect(array_keys($settings), $necessary) ) ==
+			count($necessary);
+	}
 
 
 
 
-  $main = function ($params, $settings) use ($checkSecttings, $receivePostIO)
-  {
-    assert('$checkSecttings($settings)');
+	static function main($params, $settings)
+	{
+		assert('static::checkSecttings($settings)');
 
-    $msg_data = $settings['MSG_DATA'];
+		$msg_data = $settings['MSG_DATA'];
 
-    if (
-      isset($params[$msg_data['user']]) &&
-      isset($params[$msg_data['message']]) &&
-      isset($params[$msg_data['room']])
-    ) {
+		if (
+			isset($params[$msg_data['user']]) &&
+			isset($params[$msg_data['message']]) &&
+			isset($params[$msg_data['room']])
+		) {
 
-      $c_file = $settings['CHAT_FILE'];
-      $l_file = $settings['LOCK_FILE'];
-      $max    = $settings['MAX_MESSAGES'];
+			$c_file = $settings['CHAT_FILE'];
+			$l_file = $settings['LOCK_FILE'];
+			$max    = $settings['MAX_MESSAGES'];
 
-      return $receivePostIO($params, $msg_data, $c_file, $l_file, $max);
-    } else {
-      return Either::left('invalid request');
-    }
-  };
+			return static::receivePostIO($params, $msg_data, $c_file, $l_file, $max);
+		} else {
+			return Either::left('invalid request');
+		}
+	}
 
-  if ($val($options['test'])) {
-    $exports = array(
-      'validateRequest',
-      'postFromRequest',
-      'oldPostsFromString',
-      'lastId',
-      'giveNewPostId',
-      'postsToString',
-      'retainMessage',
-      'postsToKeep',
-      'postsToWrite',
-      'acquireLockIO',
-      'releaseLockIO',
-      'readChatFileIO',
-      'writeChatFileIO',
-      'addMessageIO',
-      'receivePostIO',
-      'checkSecttings',
-      'main',
-    );
-
-  } else {
-    $exports = array('main');
-  }
-
-  return compact($exports);
 }
 
