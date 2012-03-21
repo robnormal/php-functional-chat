@@ -3,51 +3,59 @@
 require_once('RR_PHPUnit_TestCase.class.php');
 require_once('chat.php');
 
+class MyChatRequest extends FunctionalChatRequest
+{
+	static function fromPost(array $params)
+	{
+		return new MyChatRequest(
+      $params['chatter'],
+      $params['message'],
+      $params['room']
+		);
+	}
+}
+
 class PhpFunctionalChatTest extends RR_PHPUnit_TestCase
 {
   function setUp()
   {
-    $this->data_map = array(
-      'user'    => 'chatter',
-      'message' => 'message',
-      'room'    => 'room'
+		$this->postModule = FunctionalChatPostModule::standard();
+
+    $this->settings = new FunctionalChatSettings(
+			$this->postModule,
+      __DIR__.'/test_chat.json',
+      __DIR__.'/test_chat.lock',
+      10
     );
 
-    $this->settings = array(
-      'CHAT_FILE' =>    __DIR__.'/test_chat.json',
-      'LOCK_FILE' =>    __DIR__.'/test_chat.lock',
-      'MAX_MESSAGES' => 10,
-      'MSG_DATA' =>     $this->data_map
-    );
+		$this->params1 = array(
+			'room'    => 'myplace',
+			'chatter' => 'Joe',
+			'message' => 'Test message'
+		);
 
-    $r['room'] = 'myplace';
-    $r['chatter'] = 'Joe';
-    $r['message'] = 'Test message';
-
-    $this->params1 = $r;
-
-    $p = new stdClass();
-    $p->user = 'Ramona';
-    $p->message = 'Hello';
-    $p->room = 'myroom';
-
-    $this->post1 = $p;
-
+		$this->request1 = MyChatRequest::fromPost($this->params1);
     $this->now = $_SERVER['REQUEST_TIME'];
-
+		$this->post1 = new FunctionalChatPost(
+			'Ramona',
+			'myroom',
+			'Hello',
+			$this->now
+		);
 		$this->chat = new PhpFunctionalChat();
   }
 
   function testValidateRequest()
   {
-		$x = $this->chat->validateRequest($this->params1);
+		$x = $this->request1->validate();
 
     $this->instanceOf('Either', $x);
   }
 
   function testPostFromRequest()
   {
-		$x = $this->chat->postFromRequest($this->params1, $this->data_map, time());
+		$fillPost = $this->postModule->fromRequest;
+		$x = $fillPost($this->request1, time());
 
     $this->instanceOf('Either', $x);
     $this->ok($x->isRight());
@@ -55,7 +63,7 @@ class PhpFunctionalChatTest extends RR_PHPUnit_TestCase
 
   function testMain()
   {
-		$x = $this->chat->main($this->params1, $this->settings);
+		$x = $this->chat->main($this->request1, $this->settings);
 
     $this->instanceOf('Either', $x);
     $this->ok($x->isRight());
@@ -94,13 +102,14 @@ class PhpFunctionalChatTest extends RR_PHPUnit_TestCase
     $ps = array();
     for ($i = 0; $i < $n; $i++) {
       $p = new stdClass();
-      $p->user = array_rand($alphabet, 6);
-      $p->message = array_rand($alphabet, 12);
-      $p->room = 'myroom';
-      $p->time = $this->now - $i;
-      $p->id = $n - $i;
 
-      $ps []= $p;
+      $ps []= new FunctionalChatPost(
+				array_rand($alphabet, 6),
+				'myroom',
+				array_rand($alphabet, 12),
+				$this->now - $i,
+				$n - $i
+			);
     }
 
     return $ps;

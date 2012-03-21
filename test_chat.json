@@ -1,1 +1,1 @@
-[{"user":"Joe","message":"Test message","room":"myplace","time":1315780279,"id":12},{"user":"Joe","message":"Test message","room":"myplace","time":1330011602,"id":13},{"user":"Joe","message":"Test message","room":"myplace","time":1330011656,"id":14}]
+[{"id":1,"user":"Joe","room":"Test message","message":"myplace","time":1332373633}]
