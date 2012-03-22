@@ -3,7 +3,7 @@ jQuery(function ($) {
 
   var
     formatTime = function (t) {
-      var 
+      var
         d = new Date(t * 1000),
         secs = d.getSeconds(),
         s = secs < 10 ? "0" + secs.toString() : secs;
@@ -17,8 +17,8 @@ jQuery(function ($) {
     },
 
     chat = newChat({
-      post_url: '/php-functional-chat/receive.php',
-      get_url:  '/php-functional-chat/chat.json.php',
+      post_url: '/new-chat/receive.php',
+      get_url:  '/new-chat/chat.json.php',
       showMessage: showMessage,
       identity: 'joe'
     }

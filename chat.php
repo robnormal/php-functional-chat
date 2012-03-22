@@ -6,7 +6,13 @@ class PhpFunctionalChat
 {
 	static function oldPostsFromJson($string, $postFromJson)
 	{
-		return array_map($postFromJson, json_decode($string));
+		$post_objs = json_decode($string);
+
+		if (empty($post_objs)) {
+			return array();
+		} else {
+			return array_map($postFromJson, $post_objs);
+		}
 	}
 
 	static function lastId(array $old_posts)
@@ -91,24 +97,24 @@ class PhpFunctionalChat
 	static function acquireLockIO($lock_file)
 	{
 		if (! file_exists($lock_file)) {
-			touch($lock_file);
+			@ touch($lock_file);
 			if (! file_exists($lock_file)) {
-				return Either::left('could not create lock file');
+				return Either::left("could not create lock file $lock_file");
 			}
 		}
 
-		$file = fopen($lock_file, 'c');
+		$file = @ fopen($lock_file, 'c');
 
 		if ($file) {
-			if (flock($file, LOCK_EX)) {
+			if (@ flock($file, LOCK_EX)) {
 				return Either::right($file);
 			} else {
 				fclose($file);
-				return Either::left('could not acquire lock');
+				return Either::left("could not acquire lock on $file");
 			}
 
 		} else {
-			return Either::left('could not open lock file');
+			return Either::left("could not open lock file $lock_file");
 		}
 	}
 
@@ -129,17 +135,17 @@ class PhpFunctionalChat
 	 */
 	static function readChatFileIO($file, $postFromJson)
 	{
-		if ( ($json = file_get_contents($file)) !== false ) {
+		if ( ($json = @ file_get_contents($file)) !== false ) {
 			$posts = static::oldPostsFromJson($json, $postFromJson);
 
-			if (empty($messages)) {
+			if (empty($posts)) {
 				return Either::right(array());
 			} else {
 				return Either::right($posts);
 			}
 
 		} else {
-			return Either::left('could not read chat file');
+			return Either::left("could not read chat file $file");
 		}
 	}
 
@@ -205,19 +211,13 @@ class PhpFunctionalChat
 	 */
 	static function receivePostIO(FunctionalChatRequest $req, FunctionalChatSettings $settings)
 	{
-		$valid_e = $req->validate();
+		$fillRequest = $settings->postModule->fromRequest;
+		$post = $fillRequest($req, $_SERVER['REQUEST_TIME']);
 
-		if ($valid_e->isLeft()) {
-			return $valid_e;
+		if ($post->isLeft()) {
+			return $post;
 		} else {
-			$fillRequest = $settings->postModule->fromRequest;
-			$post = $fillRequest($req, $_SERVER['REQUEST_TIME']);
-
-			if ($post->isLeft()) {
-				return $post;
-			} else {
-				return static::addMessageIO($post->fromRight(), $settings);
-			}
+			return static::addMessageIO($post->fromRight(), $settings);
 		}
 	}
 
@@ -259,18 +259,41 @@ class FunctionalChatRequest
 	/**
 	 * @return Either([String]) Validated and possibly modified request data
 	 */
-	function validate() {
-		// by default, do nothing
-		return Either::right($this);
+	static function validate(array $params) {
+		return validateFromList(array('user', 'room', 'message'), $params);
 	}
 
 	static function fromPost(array $params)
 	{
-		return new FunctionalChatRequest(
-			$params['user'],
-			$params['room'],
-			$params['message']
+		$new_params_e = static::validate($params);
+
+		if ($new_params_e->isLeft()) {
+			return $new_params_e;
+		} else {
+			$new_params = $new_params_e->fromRight();
+
+			return Either::right(static::fillFromValidPost($new_params));
+		}
+	}
+
+	protected static function fillFromValidPost(array $params)
+	{
+		new FunctionalChatRequest(
+			$new_params['user'],
+			$new_params['room'],
+			$new_params['message']
 		);
 	}
+}
+
+function validateFromList(array $required, array $params)
+{
+	foreach ($required as $name) {
+		if (!isset($params[$name])) {
+			return Either::left("Bad request: missing required parameter '$name'");
+		}
+	}
+
+	return Either::right($params);
 }
 

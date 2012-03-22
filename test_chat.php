@@ -5,12 +5,20 @@ require_once('chat.php');
 
 class MyChatRequest extends FunctionalChatRequest
 {
-	static function fromPost(array $params)
+	/**
+	 * @return Either([String]) Validated and possibly modified request data
+	 */
+	static function validate(array $params)
+	{
+		return validateFromList(array('chatter', 'room', 'message'), $params);
+	}
+
+	static function fillFromValidPost(array $params)
 	{
 		return new MyChatRequest(
       $params['chatter'],
-      $params['message'],
-      $params['room']
+      $params['room'],
+      $params['message']
 		);
 	}
 }
@@ -34,7 +42,6 @@ class PhpFunctionalChatTest extends RR_PHPUnit_TestCase
 			'message' => 'Test message'
 		);
 
-		$this->request1 = MyChatRequest::fromPost($this->params1);
     $this->now = $_SERVER['REQUEST_TIME'];
 		$this->post1 = new FunctionalChatPost(
 			'Ramona',
@@ -43,11 +50,16 @@ class PhpFunctionalChatTest extends RR_PHPUnit_TestCase
 			$this->now
 		);
 		$this->chat = new PhpFunctionalChat();
+
+		$request1_e = MyChatRequest::fromPost($this->params1);
+		if ($request1_e->isRight()) {
+			$this->request1 = $request1_e->fromRight();
+		}
   }
 
   function testValidateRequest()
   {
-		$x = $this->request1->validate();
+		$x = MyChatRequest::validate($this->params1);
 
     $this->instanceOf('Either', $x);
   }

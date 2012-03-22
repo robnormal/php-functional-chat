@@ -52,12 +52,20 @@ class FunctionalChatPost
 
 	static function fromRequest(FunctionalChatRequest $request, $time)
 	{
-		return Either::right(new FunctionalChatPost(
-			$request->user,
-			$request->room,
-			$request->message,
-			$time
-		));
+		if (
+			isset($request->user) &&
+			isset($request->room) &&
+			isset($request->message)
+		) {
+			return Either::right(new FunctionalChatPost(
+				$request->user,
+				$request->room,
+				$request->message,
+				$time
+			));
+		} else {
+			return Either::left('invalid request');
+		}
 	}
 
 	static function fromJson($json)
