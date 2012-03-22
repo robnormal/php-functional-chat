@@ -11,7 +11,7 @@ class MyChatRequest extends FunctionalChatRequest
 		return validateFromList(array('chatter', 'room', 'message'), $params);
 	}
 
-	protected static function fillFromValidPost(array $params)
+	protected static function fromValidParams(array $params)
 	{
 		return new MyChatRequest(
       $params['chatter'],
@@ -33,15 +33,15 @@ if (!empty($_POST)) {
     10
 	);
 
-	$request_e = MyChatRequest::fromPost($_POST);
+	$request = MyChatRequest::fromParams($_POST);
 
-	if ($request_e->isRight()) {
-		$result_e = $chat->main($request_e->fromRight(), $settings);
+	if ($request->isRight()) {
+		$result = $chat->receivePostIO($request->fromRight(), $settings);
 	} else {
-		$result_e = $request_e;
+		$result = $request;
 	}
 
-  if ($result_e->isLeft()) {
+  if ($result->isLeft()) {
     header('HTTP/1.0 500 Internal Server Error');
 		echo $result_e->fromLeft();
 	}

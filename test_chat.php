@@ -10,10 +10,10 @@ class MyChatRequest extends FunctionalChatRequest
 	 */
 	static function validate(array $params)
 	{
-		return validateFromList(array('chatter', 'room', 'message'), $params);
+		return self::validateFromList(array('chatter', 'room', 'message'), $params);
 	}
 
-	static function fillFromValidPost(array $params)
+	static function fromValidParams(array $params)
 	{
 		return new MyChatRequest(
       $params['chatter'],
@@ -51,7 +51,7 @@ class PhpFunctionalChatTest extends RR_PHPUnit_TestCase
 		);
 		$this->chat = new PhpFunctionalChat();
 
-		$request1_e = MyChatRequest::fromPost($this->params1);
+		$request1_e = MyChatRequest::fromParams($this->params1);
 		if ($request1_e->isRight()) {
 			$this->request1 = $request1_e->fromRight();
 		}
@@ -75,7 +75,7 @@ class PhpFunctionalChatTest extends RR_PHPUnit_TestCase
 
   function testMain()
   {
-		$x = $this->chat->main($this->request1, $this->settings);
+		$x = $this->chat->receivePostIO($this->request1, $this->settings);
 
     $this->instanceOf('Either', $x);
     $this->ok($x->isRight());

@@ -125,6 +125,15 @@ class Either
     }
   }
 
+	static function ifElse($cond, $right, $left)
+	{
+		if ($cond) {
+			return self::right($right);
+		} else {
+			return self::left($left);
+		}
+	}
+
   function __get($var)
   {
     trigger_error('Either has no properties', E_USER_ERROR);

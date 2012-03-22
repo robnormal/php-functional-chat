@@ -220,24 +220,6 @@ class PhpFunctionalChat
 			return static::addMessageIO($post->fromRight(), $settings);
 		}
 	}
-
-
-
-
-	static function main(FunctionalChatRequest $req, FunctionalChatSettings $settings)
-	{
-		if (
-			isset($req->user) &&
-			isset($req->room) &&
-			isset($req->message)
-		) {
-
-			return static::receivePostIO($req, $settings);
-		} else {
-			return Either::left('invalid request');
-		}
-	}
-
 }
 
 include_once(__DIR__.'/PostModule.php');
@@ -260,10 +242,10 @@ class FunctionalChatRequest
 	 * @return Either([String]) Validated and possibly modified request data
 	 */
 	static function validate(array $params) {
-		return validateFromList(array('user', 'room', 'message'), $params);
+		return self::validateFromList(array('user', 'room', 'message'), $params);
 	}
 
-	static function fromPost(array $params)
+	static function fromParams(array $params)
 	{
 		$new_params_e = static::validate($params);
 
@@ -272,11 +254,11 @@ class FunctionalChatRequest
 		} else {
 			$new_params = $new_params_e->fromRight();
 
-			return Either::right(static::fillFromValidPost($new_params));
+			return Either::right(static::fromValidParams($new_params));
 		}
 	}
 
-	protected static function fillFromValidPost(array $params)
+	protected static function fromValidParams(array $params)
 	{
 		new FunctionalChatRequest(
 			$new_params['user'],
@@ -284,16 +266,16 @@ class FunctionalChatRequest
 			$new_params['message']
 		);
 	}
-}
 
-function validateFromList(array $required, array $params)
-{
-	foreach ($required as $name) {
-		if (!isset($params[$name])) {
-			return Either::left("Bad request: missing required parameter '$name'");
+	static function validateFromList(array $required, array $params)
+	{
+		foreach ($required as $name) {
+			if (!isset($params[$name])) {
+				return Either::left("Bad request: missing required parameter '$name'");
+			}
 		}
-	}
 
-	return Either::right($params);
+		return Either::right($params);
+	}
 }
 
