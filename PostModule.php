@@ -14,15 +14,8 @@ class FunctionalChatPostModule
 	static function standard()
 	{
 		return new FunctionalChatPostModule(
-
-			function(FunctionalChatRequest $r, $time) {
-				return FunctionalChatPost::fromRequest($r, $time);
-			},
-
-			function($json) {
-				return FunctionalChatPost::fromJson($json);
-			}
-
+			FunctionalChatPost::$fromRequest,
+			FunctionalChatPost::$fromJson
 		);
 	}
 }
@@ -35,6 +28,9 @@ class FunctionalChatPost
 	public $room;
 	public $message;
 	public $time;
+
+	public static $fromRequest;
+	public static $fromJson;
 
 	function __construct($user, $room, $message, $time, $id = null)
 	{
@@ -50,33 +46,32 @@ class FunctionalChatPost
 		return json_encode($this);
 	}
 
-	static function fromRequest(FunctionalChatRequest $request, $time)
-	{
-		if (
-			isset($request->user) &&
-			isset($request->room) &&
-			isset($request->message)
-		) {
-			return Either::right(new FunctionalChatPost(
-				$request->user,
-				$request->room,
-				$request->message,
-				$time
-			));
-		} else {
-			return Either::left('invalid request');
-		}
-	}
-
-	static function fromJson($json)
-	{
-		return new FunctionalChatPost(
-			$json->user,
-			$json->room,
-			$json->message,
-			$json->time,
-			$json->id
-		);
-	}
 }
+
+FunctionalChatPost::$fromRequest = function(FunctionalChatRequest $request, $time) {
+	if (
+		isset($request->user) &&
+		isset($request->room) &&
+		isset($request->message)
+	) {
+		return Either::right(new FunctionalChatPost(
+			$request->user,
+			$request->room,
+			$request->message,
+			$time
+		));
+	} else {
+		return Either::left('invalid request');
+	}
+};
+
+FunctionalChatPost::$fromJson = function($json) {
+	return new FunctionalChatPost(
+		$json->user,
+		$json->room,
+		$json->message,
+		$json->time,
+		$json->id
+	);
+};
 
