@@ -35,15 +35,22 @@ if (!empty($_POST)) {
 
 	$request = MyChatRequest::fromParams($_POST);
 
-	if ($request->isRight()) {
-		$result = $chat->receivePostIO($request->fromRight(), $settings);
-	} else {
+	if ($request->isLeft()) {
 		$result = $request;
+	} else {
+		$result = $chat->receivePostIO($request->fromRight(), $settings);
 	}
 
   if ($result->isLeft()) {
     header('HTTP/1.0 500 Internal Server Error');
 		echo $result_e->fromLeft();
+
+	} else {
+
+		header('Cache-Control: no-cache, must-revalidate');
+		header('Expires: Sat, 26 Jul 1997 05:00:00 GMT');
+		header('Content-type: application/json');
+		readfile($settings->chat_file);
 	}
 
 }
