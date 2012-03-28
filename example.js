@@ -13,7 +13,7 @@ jQuery(function ($) {
 
     showMessage = function (msg) {
       var time_str = formatTime(msg.time);
-      $.tmpl('chatPost', msg, {timeStr: time_str}).appendTo('#chat_div');
+      $.tmpl('chatPost', msg, {timeStr: time_str}).appendTo('#chat_area');
     },
 
     chat = new Chat({

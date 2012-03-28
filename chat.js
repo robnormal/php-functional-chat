@@ -48,7 +48,6 @@ var Chat, curry, curryThis, fetchMessages, __slice = Array.prototype.slice;
 		var last_id = 0;
 		
 		return function(chat) {
-			console.log(chat.get_url);
 			$.getJSON(chat.get_url, null, function (msgs) {
 				var len, i;
 
@@ -164,10 +163,16 @@ var Chat, curry, curryThis, fetchMessages, __slice = Array.prototype.slice;
 			}
 
 			if (this.validateMessage(cropped_text)) {
-				$.post(this.post_url, {
-					message: cropped_text,
-					user: this.identity,
-					room: this.room
+				$.ajax(this.post_url, {
+					type: 'POST',
+					data: {
+						message: cropped_text,
+						user: this.identity,
+						room: this.room
+					},
+					error: function(err) {
+						alert(err.responseText);
+					}
 				});
 				return cropped_text.length;
 			} else {

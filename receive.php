@@ -8,13 +8,19 @@ class MyChatRequest extends FunctionalChatRequest
 	 */
 	static function validate(array $params)
 	{
-		return validateFromList(array('chatter', 'room', 'message'), $params);
+		if (empty($params['user'])) {
+			return Either::left("Missing required parameter \"user\"");
+		} else if (empty($params['room'])) {
+			return Either::left("Missing required parameter \"room\"");
+		} else {
+			return Either::right($params);
+		}
 	}
 
 	protected static function fromValidParams(array $params)
 	{
 		return new MyChatRequest(
-      $params['chatter'],
+      $params['user'],
       $params['room'],
       $params['message']
 		);
@@ -33,17 +39,17 @@ if (!empty($_POST)) {
     10
 	);
 
-	$request = MyChatRequest::fromParams($_POST);
+	$eRequest = MyChatRequest::fromParams($_POST);
 
-	if ($request->isLeft()) {
-		$result = $request;
+	if ($eRequest->isLeft()) {
+		$eResult = $eRequest;
 	} else {
-		$result = $chat->receivePostIO($request->fromRight(), $settings);
+		$eResult = $chat->receivePostIO($eRequest->fromRight(), $settings);
 	}
 
-  if ($result->isLeft()) {
+  if ($eResult->isLeft()) {
     header('HTTP/1.0 500 Internal Server Error');
-		echo $result_e->fromLeft();
+		echo $eResult->fromLeft();
 
 	} else {
 
