@@ -5,70 +5,13 @@ msgs = [
 ];
 */
 
-var Chat, curry, curryThis, fetchMessages, __slice = Array.prototype.slice;
+var Chat, curry, curryThis, __slice = Array.prototype.slice;
 
 (function($) {
-	$.pluck = function (arr, member) {
-		var members = [], len = arr.length, i;
-
-		for (i = 0; i < len; ++i) {
-			members[i] = arr[i][member];
-		}
-
-		return members;
-	};
-
-	function curry(f) {
-		var args = __slice.call(arguments, 1);
-		return function () {
-			return f.apply(void 0, args.concat( __slice.apply(arguments) ));
-		};
-	}
-
-	/* Returns function that passes 'this' as first argument to f
-	** For attaching an already-defined function as an object method
-	*/
-	function curryThis(f) {
-		return function() {
-			var $args = __slice.apply(arguments);
-			$args.unshift(this);
-			return f.apply(null, $args);
-		};
-	}
-
-
-
 	var holdingShift = function (e) {
 		// standard || IE
 		return e.shiftKey || (e.modifiers & window.Event.SHIFT_MASK);
 	};
-
-	// last_id - stateful variable required for async stuff
-	var fetchMessages = (function() {
-		var last_id = 0;
-		
-		return function(chat) {
-			$.getJSON(chat.get_url, null, function (msgs) {
-				var len, i;
-
-				if (msgs) {
-					len = msgs.length;
-					for (i = 0; i < len; i++) {
-						chat.processMessage(msgs[i], last_id);
-					}
-
-					last_id = 0;
-					for (i = 0; i < len; i++) {
-						if (msgs[i] && msgs[i].id && msgs[i].id > last_id) {
-							last_id = msgs[i].id ;
-						}
-					}
-
-					return last_id;
-				}
-			});
-		};
-	})();
 
 
 
@@ -96,7 +39,7 @@ var Chat, curry, curryThis, fetchMessages, __slice = Array.prototype.slice;
 	Chat.prototype = {
 		showMessage: function (msg) {
 			if (msg.message && msg.user) {
-				this.chat_div.append(this.formatMessage(msg));
+				this.chat_area.append(this.formatMessage(msg));
 			}
 		},
 
@@ -114,12 +57,47 @@ var Chat, curry, curryThis, fetchMessages, __slice = Array.prototype.slice;
 			}
 		},
 
-		fetchMessages: fetchMessages,
+		processMessages: (function() {
+			// last_id - stateful variable required for async stuff
+			var last_id = 0;
+
+			return function(msgs) {
+				var len, i;
+
+				if (msgs) {
+					len = msgs.length;
+					for (i = 0; i < len; i++) {
+						this.processMessage(msgs[i], last_id);
+					}
+
+					last_id = 0;
+					for (i = 0; i < len; i++) {
+						if (msgs[i] && msgs[i].id && msgs[i].id > last_id) {
+							last_id = msgs[i].id ;
+						}
+					}
+
+					return last_id;
+				}
+			};
+		})(),
+
+		fetchMessages: function() {
+			var self = this;
+			$.getJSON(this.get_url, null, function(msgs) {
+				self.processMessages(msgs);
+			});
+		},
+
 		stop: clearInterval,
 
 		start: function (polling_rate, inputHandler) {
 			polling_rate = polling_rate || 1000;
-			var timeout = setInterval(curry(this.fetchMessages, this), polling_rate);
+			var self = this;
+
+			var timeout = setInterval(function() {
+				self.fetchMessages();
+			}, polling_rate);
 
 			// listen on input_area
 			if (this.inputHandler) {
@@ -163,6 +141,8 @@ var Chat, curry, curryThis, fetchMessages, __slice = Array.prototype.slice;
 			}
 
 			if (this.validateMessage(cropped_text)) {
+				var self = this;
+
 				$.ajax(this.post_url, {
 					type: 'POST',
 					data: {
@@ -170,14 +150,19 @@ var Chat, curry, curryThis, fetchMessages, __slice = Array.prototype.slice;
 						user: this.identity,
 						room: this.room
 					},
-					error: function(err) {
-						alert(err.responseText);
-					}
+					success: function(msgs) {
+						self.processMessages(msgs);
+					},
+					error: this.handlePostError
 				});
 				return cropped_text.length;
 			} else {
 				return 0;
 			}
+		},
+
+		handlePostError: function(err) {
+			alert(err.responseText);
 		},
 
 		validateMessage: function (text) {
