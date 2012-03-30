@@ -2,8 +2,8 @@
 <html>
 	<head>
 		<title>test</title>
-		<script src="/new-chat/js/jquery.js"></script>
-		<script src="/new-chat/js/jquery-tmpl/jquery.tmpl.js"></script>
+		<script src="/js/jquery.js"></script>
+		<script src="/js/jquery-tmpl/jquery.tmpl.js"></script>
 		<script src="/new-chat/chat.js"></script>
 		<script src="/new-chat/example.js"></script>
 		<style>
@@ -35,9 +35,9 @@
       }
 		</style>
 	</head>
-	<body>
 
-		<div id="chat_div">
+	<body>
+		<div id="chat_area">
 		</div>
 
 		<form action="#" method="post">
@@ -50,6 +50,7 @@
         <div class="chatTime">${$item.timeStr}</div>
         <div class="chatUser">${user}</div>
         <div class="chatMsg">${message}</div>
+				<br style="clear: both" />
       </div>
     </script>
 

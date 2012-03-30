@@ -13,16 +13,17 @@ jQuery(function ($) {
 
     showMessage = function (msg) {
       var time_str = formatTime(msg.time);
-      $.tmpl('chatPost', msg, {timeStr: time_str}).appendTo('#chat_div');
+      $.tmpl('chatPost', msg, {timeStr: time_str}).appendTo('#chat_area');
     },
 
-    chat = newChat({
+    chat = new Chat({
       post_url: '/new-chat/receive.php',
       get_url:  '/new-chat/chat.json.php',
       showMessage: showMessage,
       identity: 'joe'
-    }
-  );
+    });
+	
+	chat.showMessage = showMessage;
 
   chat.start();
 
