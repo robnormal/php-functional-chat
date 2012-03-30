@@ -144,6 +144,10 @@ class PhpFunctionalChat
 				return Either::right($posts);
 			}
 
+		// if file doesn't exist, return empty
+		} else if (! file_exists($file)) {
+			return Either::right(array());
+
 		} else {
 			return Either::left("could not read chat file $file");
 		}
