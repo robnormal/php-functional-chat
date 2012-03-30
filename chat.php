@@ -75,21 +75,37 @@ class PhpFunctionalChat
 	}
 
 	/**
+	 * Escape text, etc.
+	 *
+	 * @return Either(Post)
+	 */
+	static function transformPost(FunctionalChatPost $post)
+	{
+		$_post          = clone $post;
+		$_post->message = htmlentities($post->message);
+
+		return $_post;
+	}
+
+	/**
 	 * @param [FunctionalChatPost] $old_posts
 	 * @param FunctionalChatPost   $incoming
 	 * @param int                  $max_posts
 	 *
-	 * @return [Post]
+	 * @return Either([Post])
 	 */
 	static function postsToWrite(array $old_posts, FunctionalChatPost $incoming, $max_posts)
 	{
 		// get ID before filtering messages, so we can be sure it is up-to-date
-		$post = static::giveNewPostId($incoming, $old_posts);
+		$ePost   = static::transformPost(static::giveNewPostId($incoming, $old_posts));
 		$keeping = static::postsToKeep($old_posts, $max_posts);
 
-		return array_merge($keeping, array($post));
+		if ($ePost->isLeft()) {
+			return $ePost;
+		} else {
+			return Either::right(array_merge($old_posts, array($ePost->fromRight())));
+		}
 	}
-
 
 	/**
 	 * @return Either(resource)
@@ -204,9 +220,13 @@ class PhpFunctionalChat
 
 		} else {
 			$old = $messages_e->fromRight();
-			$writing = static::postsToWrite($old, $incoming, $settings->max_messages);
+			$eWriting = static::postsToWrite($old, $incoming, $settings->max_messages);
 
-			return static::writeChatFileIO($writing, $settings->chat_file, $settings->lock_file);
+			if ($eWriting->isLeft()) {
+				return $eWriting;
+			} else {
+				return static::writeChatFileIO($eWriting->fromRight(), $settings->chat_file, $settings->lock_file);
+			}
 		}
 	}
 

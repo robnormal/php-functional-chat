@@ -95,6 +95,10 @@ var Chat, curry, curryThis, __slice = Array.prototype.slice;
 			polling_rate = polling_rate || 1000;
 			var self = this;
 
+			// do it now
+			self.fetchMessages();
+
+			// and set a timeout
 			var timeout = setInterval(function() {
 				self.fetchMessages();
 			}, polling_rate);
