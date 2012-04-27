@@ -34,12 +34,17 @@ var Chat, curry, curryThis, __slice = Array.prototype.slice;
 		this.max_length = options.max_length || 512; // standard max for chat rooms
 		this.chat_area  = $(options.chat_area || '#chat_area');
 		this.input_area = $(options.input_area || '#chat_input');
+		this.reversed   = options.reversed;
 	};
 
 	Chat.prototype = {
 		showMessage: function (msg) {
 			if (msg.message && msg.user) {
-				this.chat_area.append(this.formatMessage(msg));
+				if (this.reversed) {
+					this.chat_area.prepend(this.formatMessage(msg));
+				} else {
+					this.chat_area.append(this.formatMessage(msg));
+				}
 			}
 		},
 
