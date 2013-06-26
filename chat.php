@@ -94,16 +94,19 @@ class PhpFunctionalChat
 	 *
 	 * @return Either([Post])
 	 */
-	static function postsToWrite(array $old_posts, FunctionalChatPost $incoming, $max_posts)
+	static function postsToWrite(array $posts, FunctionalChatPost $incoming, $max_posts)
 	{
 		// get ID before filtering messages, so we can be sure it is up-to-date
-		$ePost   = static::transformPost(static::giveNewPostId($incoming, $old_posts));
-		$keeping = static::postsToKeep($old_posts, $max_posts);
+		$ePost = static::transformPost(static::giveNewPostId($incoming, $posts));
 
 		if ($ePost->isLeft()) {
 			return $ePost;
 		} else {
-			return Either::right(array_merge($old_posts, array($ePost->fromRight())));
+			$posts []= $ePost->fromRight();
+
+			return Either::right(
+				static::postsToKeep($posts, $max_posts)
+			);
 		}
 	}
 
